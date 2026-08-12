@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "MeyazegGuide",
+  "version": "1.0",
+  "description": "עוזר AI אינטראקטיבי לאתר המייצגים",
+  "permissions": [
+    "sidePanel",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://meyazegs.btl.gov.il/*"
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://meyazegs.btl.gov.il/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
