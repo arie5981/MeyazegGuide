@@ -12,16 +12,18 @@ async function scanCurrentPage() {
     return;
   }
 
-  // שליחת הודעה ל-content.js בדף
+  // שליחת הודעה ל-content.js ללא תנאי חוסם
   chrome.tabs.sendMessage(tab.id, { action: "GET_PAGE_CONTEXT" }, (response) => {
+    // אם content.js עדיין לא נטען בדף (למשל אם הדף נטען לפני התוסף)
     if (chrome.runtime.lastError || !response) {
-      if (statusDiv) statusDiv.innerText = "אנא גלוש לאתר המייצגים (meyazegs.btl.gov.il)";
-      if (aiDiv) aiDiv.innerText = "התוסף פועל רק בתוך אתר המייצגים.";
+      if (statusDiv) statusDiv.innerHTML = `<b>כתובת:</b> ${tab.url}`;
+      if (aiDiv) aiDiv.innerHTML = "רענן את דף האינטרנט (F5) ולחץ שוב על סריקה.";
       return;
     }
 
+    // הצגת המידע שהתקבל בהצלחה
     if (statusDiv) {
-      statusDiv.innerHTML = `<b>דף:</b> ${response.mainHeader || response.title || response.pathname}`;
+      statusDiv.innerHTML = `<b>דף:</b> ${response.mainHeader || response.title || 'אתר המייצגים'}`;
     }
 
     if (aiDiv) {
@@ -30,12 +32,10 @@ async function scanCurrentPage() {
       } else if (response.hasTable) {
         aiDiv.innerHTML = "💡 <b>טיפ:</b> מופיעה טבלה במסך. ניתן לייצא אותה לאקסל באמצעות כפתור <b>'אקסל'</b> בתחתית הטבלה.";
       } else {
-        aiDiv.innerHTML = "זיהיתי שאתה בדף הראשי. כדי להתחיל, לחץ על <b>'חיפוש מתקדם'</b> ולאחר מכן <b>'חפש'</b>.";
+        aiDiv.innerHTML = "הדף נסרק בהצלחה! אין שגיאות גלויות במסך.";
       }
     }
   });
-
-  updatePageCounter();
 }
 
 // 2. עדכון מונה הדפים שהוקלטו עד כה
