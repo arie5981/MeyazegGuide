@@ -6,17 +6,22 @@
   "permissions": [
     "sidePanel",
     "activeTab",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
-    "https://meyazegs.btl.gov.il/*"
+    "https://meyazegs.btl.gov.il/*",
+    "http://meyazegs.btl.gov.il/*"
   ],
   "side_panel": {
     "default_path": "sidepanel.html"
   },
   "content_scripts": [
     {
-      "matches": ["https://meyazegs.btl.gov.il/*"],
+      "matches": [
+        "https://meyazegs.btl.gov.il/*",
+        "http://meyazegs.btl.gov.il/*"
+      ],
       "js": ["content.js"]
     }
   ]
