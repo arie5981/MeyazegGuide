@@ -1,90 +1,107 @@
-// sidepanel.js - רץ בתוך חלון הצד (Side Panel)
+document.addEventListener('DOMContentLoaded', () => {
+  const statusDiv = document.getElementById('status');
+  const scanBtn = document.getElementById('scanBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const pageCounter = document.getElementById('pageCounter');
 
-// 1. סריקת הדף הנוכחי והצגת מידע
-async function scanCurrentPage() {
-  const statusDiv = document.getElementById("status");
-  const aiDiv = document.getElementById("aiResponse");
+  let currentPath = '';
 
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-  if (!tab || !tab.id) {
-    if (statusDiv) statusDiv.innerText = "לא נמצאה כרטיסייה פעילה.";
-    return;
+  // חילוץ שם הקובץ בלבד מתוך ה-URL
+  function extractCleanPath(urlStr) {
+    try {
+      const urlObj = new URL(urlStr);
+      const filename = urlObj.pathname.split('/').pop(); // לוקח את החלק האחרון בנתיב
+      return filename.replace(/\.aspx$/i, ''); // מסיר את הסיומת .aspx
+    } catch (e) {
+      return '';
+    }
   }
 
-  // שליחת הודעה ל-content.js ללא תנאי חוסם
-  chrome.tabs.sendMessage(tab.id, { action: "GET_PAGE_CONTEXT" }, (response) => {
-    // אם content.js עדיין לא נטען בדף (למשל אם הדף נטען לפני התוסף)
-    if (chrome.runtime.lastError || !response) {
-      if (statusDiv) statusDiv.innerHTML = `<b>כתובת:</b> ${tab.url}`;
-      if (aiDiv) aiDiv.innerHTML = "רענן את דף האינטרנט (F5) ולחץ שוב על סריקה.";
-      return;
+  // טעינת ה-URL של הכרטיסייה הפעילה
+  async function updateActiveTabInfo() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab && tab.url) {
+      currentPath = extractCleanPath(tab.url);
+      statusDiv.textContent = currentPath ? `path: ${currentPath}` : 'לא פתוח בדף המייצגים';
     }
+  }
 
-    // הצגת המידע שהתקבל בהצלחה
-    if (statusDiv) {
-      statusDiv.innerHTML = `<b>דף:</b> ${response.mainHeader || response.title || 'אתר המייצגים'}`;
-    }
-
-    if (aiDiv) {
-      if (response.errors && response.errors.length > 0) {
-        aiDiv.innerHTML = `⚠️ <b>זוהתה שגיאה בדף:</b><br>${response.errors.join("<br>")}`;
-      } else if (response.hasTable) {
-        aiDiv.innerHTML = "💡 <b>טיפ:</b> מופיעה טבלה במסך. ניתן לייצא אותה לאקסל באמצעות כפתור <b>'אקסל'</b> בתחתית הטבלה.";
-      } else {
-        aiDiv.innerHTML = "הדף נסרק בהצלחה! אין שגיאות גלויות במסך.";
-      }
-    }
-  });
-}
-
-// 2. עדכון מונה הדפים שהוקלטו עד כה
-function updatePageCounter() {
-  const counterDiv = document.getElementById("pageCounter");
-  if (!counterDiv) return;
-
-  chrome.storage.local.get({ mappedPages: [] }, (result) => {
-    counterDiv.innerText = `דפים שהוקלטו למיפוי: ${result.mappedPages.length}`;
-  });
-}
-
-// 3. ייצוא קובץ JSON של כל הדפים שהוקלטו
-function exportMapJSON() {
-  chrome.storage.local.get({ mappedPages: [] }, (result) => {
-    if (result.mappedPages.length === 0) {
-      alert("טרם הוקלטו דפים. גלוש באתר המייצגים כדי לאסוף דפים.");
-      return;
-    }
-
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result.mappedPages, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", "meyazeg_pages_map.json");
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  });
-}
-
-// 4. איפוס רשימת הדפים המוקלטים
-function clearMapData() {
-  if (confirm("האם אתה בטוח שברצונך לאפס את כל הנתונים שהוקלטו?")) {
-    chrome.storage.local.set({ mappedPages: [] }, () => {
-      updatePageCounter();
-      alert("רשימת הדפים אופסה בהצלחה.");
+  // עדכון מונה הדפים בזיכרון
+  function updateCounter() {
+    chrome.storage.local.get({ mappedPages: [] }, (result) => {
+      pageCounter.textContent = `דפים שנשמרו: ${result.mappedPages.length}`;
     });
   }
-}
 
-// חיבור אירועים לכפתורים במידה וקיימים ב-HTML
-document.addEventListener("DOMContentLoaded", () => {
-  const scanBtn = document.getElementById("scanBtn");
-  const exportBtn = document.getElementById("exportBtn");
-  const clearBtn = document.getElementById("clearBtn");
+  updateActiveTabInfo();
+  updateCounter();
 
-  if (scanBtn) scanBtn.addEventListener("click", scanCurrentPage);
-  if (exportBtn) exportBtn.addEventListener("click", exportMapJSON);
-  if (clearBtn) clearBtn.addEventListener("click", clearMapData);
+  // עריכת היררכיית ה-site מתוך 3 השדות
+  function getSiteHierarchy() {
+    const s1 = document.getElementById('site1').value.trim();
+    const s2 = document.getElementById('site2').value.trim();
+    const s3 = document.getElementById('site3').value.trim();
 
-  scanCurrentPage();
+    return [s1, s2, s3].filter(Boolean).join(' > ');
+  }
+
+  // לחיצה על כפתור שמירה
+  scanBtn.addEventListener('click', async () => {
+    if (!currentPath) {
+      alert('לא ניתן לחלץ path מכתובת זו.');
+      return;
+    }
+
+    const site = getSiteHierarchy();
+    const mainHeader = document.getElementById('mainHeader').value.trim();
+    const searchText = document.getElementById('searchText').value.trim();
+
+    const pageData = {
+      site: site,
+      mainHeader: mainHeader,
+      searchText: searchText,
+      path: currentPath
+    };
+
+    // שמירה ב-chrome.storage.local
+    chrome.storage.local.get({ mappedPages: [] }, (result) => {
+      const mappedPages = result.mappedPages;
+      
+      // עדכון במידה וה-path כבר קיים, או הוספת חדש
+      const existingIndex = mappedPages.findIndex(p => p.path === currentPath);
+      if (existingIndex > -1) {
+        mappedPages[existingIndex] = pageData;
+      } else {
+        mappedPages.push(pageData);
+      }
+
+      chrome.storage.local.set({ mappedPages }, () => {
+        updateCounter();
+        alert(`הדף ${currentPath} שנשמר בהצלחה!`);
+      });
+    });
+  });
+
+  // ייצא לקובץ JSON
+  exportBtn.addEventListener('click', () => {
+    chrome.storage.local.get({ mappedPages: [] }, (result) => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result.mappedPages, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "meyazeg_site_map.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+  });
+
+  // איפוס
+  clearBtn.addEventListener('click', () => {
+    if (confirm('האם למחוק את כל הדפים שנשמרו?')) {
+      chrome.storage.local.set({ mappedPages: [] }, () => {
+        updateCounter();
+      });
+    }
+  });
 });
