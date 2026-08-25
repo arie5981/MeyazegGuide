@@ -6,40 +6,50 @@
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      padding: 15px;
+      padding: 12px;
       margin: 0;
       background-color: #f8f9fa;
       color: #333;
     }
     .card {
       background: #ffffff;
-      padding: 12px 15px;
+      padding: 12px;
       border-radius: 8px;
       border: 1px solid #e9ecef;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    h2 { margin-top: 0; font-size: 1.3em; text-align: center; }
-    h3 { margin-top: 0; color: #0d6efd; font-size: 1em; margin-bottom: 8px; }
+    h2 { margin: 0 0 10px 0; font-size: 1.2em; text-align: center; }
+    h3 { margin-top: 0; color: #0d6efd; font-size: 0.95em; margin-bottom: 8px; }
+    label { font-size: 0.8em; font-weight: bold; display: block; margin-top: 6px; margin-bottom: 2px; }
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 0.85em;
+    }
+    textarea { resize: vertical; height: 50px; }
     button {
       background-color: #0d6efd;
       color: white;
       border: none;
-      padding: 10px 14px;
+      padding: 8px 12px;
       border-radius: 6px;
       cursor: pointer;
       width: 100%;
       font-weight: bold;
+      font-size: 0.9em;
       transition: background-color 0.2s;
     }
     button:hover { background-color: #0b5ed7; }
     .btn-secondary { background-color: #198754; margin-top: 8px; }
     .btn-secondary:hover { background-color: #157347; }
-    .btn-danger { background-color: #dc3545; margin-top: 5px; font-size: 0.8em; padding: 6px; }
+    .btn-danger { background-color: #dc3545; margin-top: 5px; font-size: 0.75em; padding: 5px; }
     .btn-danger:hover { background-color: #bb2d3b; }
-    #status { font-size: 0.9em; color: #6c757d; word-break: break-all; }
-    #aiResponse { line-height: 1.5; font-size: 0.9em; }
-    #pageCounter { font-size: 0.9em; font-weight: bold; color: #495057; margin-bottom: 5px; }
+    #status { font-size: 0.8em; color: #6c757d; word-break: break-all; }
+    #pageCounter { font-size: 0.85em; font-weight: bold; color: #495057; margin-bottom: 5px; }
   </style>
 </head>
 <body>
@@ -47,25 +57,38 @@
   <h2>🤖 MeyazegGuide</h2>
 
   <div class="card">
-    <h3>מיקום נוכחי</h3>
-    <div id="status">טוען נתונים...</div>
+    <h3>נתיב דף (path) שנזעה</h3>
+    <div id="status">טוען...</div>
   </div>
 
   <div class="card">
-    <button id="scanBtn">סרוק דף נוכחי</button>
+    <h3>היררכיית אתר (site)</h3>
+    <label for="site1">רמה 1 (למשל: מבוטח):</label>
+    <input type="text" id="site1" placeholder="ראשי / מבוטח">
+
+    <label for="site2">רמה 2 (למשל: הוראות כספיות):</label>
+    <input type="text" id="site2" placeholder="אופציונלי">
+
+    <label for="site3">רמה 3 (למשל: הסכם בכרטיס אשראי):</label>
+    <input type="text" id="site3" placeholder="אופציונלי">
   </div>
 
   <div class="card">
-    <h3>הנחיות AI</h3>
-    <div id="aiResponse">העוזר מוכן לסייע. גלוש לאתר המייצגים ולחץ סרוק.</div>
+    <h3>פרטי הדף</h3>
+    <label for="mainHeader">כותרת ראשית (mainHeader):</label>
+    <input type="text" id="mainHeader" placeholder="הכנס כותרת ראשית">
+
+    <label for="searchText">טקסט לחיפוש (searchText):</label>
+    <textarea id="searchText" placeholder="הכנס מילות מפתח או טקסט חופשי"></textarea>
   </div>
 
-  <!-- בלוק מיפוי הדפים (Auto-Mapper) -->
-  <div class="card" style="border-top: 3px solid #198754;">
-    <h3>מיפוי דפי האתר (Auto-Mapper)</h3>
-    <div id="pageCounter">דפים שהוקלטו: 0</div>
+  <button id="scanBtn">💾 שמור דף ל-JSON</button>
+
+  <div class="card" style="border-top: 3px solid #198754; margin-top: 10px;">
+    <h3>ניהול וייצוא</h3>
+    <div id="pageCounter">דפים שנשמרו: 0</div>
     <button id="exportBtn" class="btn-secondary">📥 ייצא מפת דפים (JSON)</button>
-    <button id="clearBtn" class="btn-danger">🗑️ איפוס הקלטות</button>
+    <button id="clearBtn" class="btn-danger">🗑️ איפוס נתונים</button>
   </div>
 
   <script src="sidepanel.js"></script>
