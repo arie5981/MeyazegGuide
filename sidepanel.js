@@ -7,8 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearBtn = document.getElementById('clearBtn');
   const pageCounter = document.getElementById('pageCounter');
 
-  let currentPath = '';
-
   // חילוץ שם הקובץ בלבד מתוך ה-URL (ללא סיומת aspx וללא פרמטרים)
   function extractCleanPath(urlStr) {
     try {
@@ -20,19 +18,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // שליפת ה-URL מתוך הכרטיסייה הפעילה בדפדפן
-  async function updateActiveTabInfo() {
+  // שליפת ה-URL הבלעדי של הכרטיסייה הפעילה כרגע
+  async function getActiveTabPath() {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab && tab.url) {
-        currentPath = extractCleanPath(tab.url);
-        statusDiv.textContent = currentPath ? `path: ${currentPath}` : 'לא פתוח בדף המייצגים';
-      } else {
-        statusDiv.textContent = 'לא נמצאה כרטיסייה פעילה';
+        const cleanPath = extractCleanPath(tab.url);
+        if (statusDiv) {
+          statusDiv.textContent = cleanPath ? `path: ${cleanPath}` : 'לא פתוח בדף המייצגים';
+        }
+        return cleanPath;
       }
     } catch (e) {
-      statusDiv.textContent = 'שגיאה בטעינת נתוני כרטיסייה';
+      console.error(e);
     }
+    if (statusDiv) statusDiv.textContent = 'לא נמצאה כרטיסייה פעילה';
+    return '';
   }
 
   // עדכון מונה הדפים שנשמרו בזיכרון התוסף
@@ -44,11 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // הרצה ראשונית בטעינת ה-Side Panel
-  updateActiveTabInfo();
-  updateCounter();
-
-  // הרכבת מחרוזת ה-site מתוך 3 תיבות הטקסט (מפריד ' > ')
+  // טעינה ראשונית בצירוף היררכיית ה-site מתוך 3 תיבות הטקסט
   function getSiteHierarchy() {
     const s1 = document.getElementById('site1')?.value.trim() || '';
     const s2 = document.getElementById('site2')?.value.trim() || '';
@@ -57,9 +54,16 @@ document.addEventListener('DOMContentLoaded', () => {
     return [s1, s2, s3].filter(Boolean).join(' > ');
   }
 
+  // הרצה ראשונית של התצוגה והמונה
+  getActiveTabPath();
+  updateCounter();
+
   // 1. שמירת/עדכון הדף הנוכחי ב-JSON
   if (scanBtn) {
-    scanBtn.addEventListener('click', () => {
+    scanBtn.addEventListener('click', async () => {
+      // שליפת ה-path המעודכן ביותר ממש ברגע הלחיצה
+      const currentPath = await getActiveTabPath();
+
       if (!currentPath) {
         alert('לא ניתן לחלץ path מכתובת זו.');
         return;
@@ -76,21 +80,24 @@ document.addEventListener('DOMContentLoaded', () => {
         path: currentPath
       };
 
-      // שמירה ב-chrome.storage.local
+      // שמירה ב-chrome.storage.local תוך שילוב עם הרשימה הקיימת
       chrome.storage.local.get({ mappedPages: [] }, (result) => {
-        const mappedPages = result.mappedPages;
+        let mappedPages = result.mappedPages;
         
-        // אם הדף (path) כבר קיים - מעדכנים אותו, אחרת מוסיפים
+        // בדיקה אם ה-path כבר קיים ברשימה
         const existingIndex = mappedPages.findIndex(p => p.path === currentPath);
+        
         if (existingIndex > -1) {
+          // עדכון רשומה קיימת
           mappedPages[existingIndex] = pageData;
         } else {
+          // הוספת רשומה חדשה לגמרי לרשימה
           mappedPages.push(pageData);
         }
 
-        chrome.storage.local.set({ mappedPages }, () => {
+        chrome.storage.local.set({ mappedPages: mappedPages }, () => {
           updateCounter();
-          alert(`הדף ${currentPath} שנשמר/עודכן בהצלחה!`);
+          alert(`הדף '${currentPath}' נשמר/עודכן בהצלחה! (סה"כ נשמרו: ${mappedPages.length})`);
         });
       });
     });
@@ -107,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const jsonString = JSON.stringify(result.mappedPages, null, 2);
         
-        // הוספת BOM (\uFEFF) למניעת בעיות תצוגת עברית ב-Windows/Notepad
+        // הוספת BOM (\uFEFF) למניעת בעיות תצוגת עברית
         const blob = new Blob(["\uFEFF" + jsonString], { type: 'application/json;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         
@@ -117,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         
-        // ניקוי משאב ה-URL מהזיכרון
         document.body.removeChild(downloadAnchor);
         URL.revokeObjectURL(url);
       });
